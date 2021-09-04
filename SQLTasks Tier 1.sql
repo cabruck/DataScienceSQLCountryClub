@@ -64,15 +64,9 @@ WHERE membercost > 0 AND
 /* Q4: Write an SQL query to retrieve the details of facilities with ID 1 and 5.
 Try writing the query without using the OR operator. */
 
--- apparently need parentheses around both select statements
--- for MySQL  UNION queries
-(SELECT *
+SELECT *
 FROM Facilities
-WHERE facid = 1)
-UNION
-(SELECT *
-FROM Facilities
-WHERE facid = 5);
+WHERE facid IN (1,5);
 
 
 /* Q5: Produce a list of facilities, with each labelled as
@@ -115,7 +109,7 @@ INNER JOIN Facilities
 INNER JOIN Members
 	USING(memid)
 WHERE name LIKE 'Tennis Court%'
-ORDER BY surname, firstname;
+ORDER BY surname, firstname, name;
 
 
 /* Q8: Produce a list of bookings on the day of 2012-09-14 which
@@ -132,39 +126,6 @@ Order by descending cost, and do not use any subqueries. */
 
 SQLite allows me to reuse "total_cost" in WHERE clause, MySQL doesn't */
 
-SELECT bookid,
-       starttime,
-       name,
-       firstname, surname,
-       slots*guestcost AS total_cost
-FROM Bookings
-INNER JOIN Facilities
-	USING(facid)
-INNER JOIN Members
-	USING(memid)
-	WHERE starttime LIKE '2012-09-14%'
-         AND slots*guestcost >30
-         AND memid = 0
-UNION
-SELECT bookid,
-       starttime,
-       name,
-       firstname, surname,
-       slots*membercost AS total_cost
-FROM Bookings
-INNER JOIN Facilities
-	USING(facid)
-INNER JOIN Members
-	USING(memid)
-	WHERE starttime LIKE '2012-09-14%'
-         AND slots*membercost >30
-         AND memid <> 0
-ORDER BY total_cost DESC;
-
-/* Q9: This time, produce the same result as in Q8, but using a subquery. */
-
-/*
-*/
 
 /* CB: this works in SQLite
 SELECT bookid,
@@ -176,11 +137,11 @@ SELECT bookid,
         ELSE slots*membercost END )  AS  "total_cost"
 FROM Bookings
 INNER JOIN Facilities
-	USING(facid)
+    USING(facid)
 INNER JOIN Members
-	USING(memid)
-	WHERE starttime LIKE '2012-09-14%'
-         AND total_cost >30
+    USING(memid)
+WHERE starttime LIKE '2012-09-14%'
+    AND total_cost >30
 ORDER BY total_cost DESC
 */
 
@@ -196,11 +157,21 @@ INNER JOIN Facilities
 	USING(facid)
 INNER JOIN Members
 	USING(memid)
-	WHERE starttime LIKE '2012-09-14%'
-         AND (CASE
-              WHEN  memid=0 THEN slots*guestcost
-              ELSE slots*membercost END ) >30
+WHERE starttime LIKE '2012-09-14%'
+    AND (CASE
+        WHEN  memid=0 THEN slots*guestcost
+        ELSE slots*membercost END ) >30
 ORDER BY total_cost DESC;
+
+
+/* Q9: This time, produce the same result as in Q8, but using a subquery. */
+
+
+/* CB: I can't calculate total cost until after I join Facilities to Bookings.
+The only subqueries on a pre-joined table I can think of
+do row and/or column filtering, which I could do on outer query anyway.
+*/
+
 
 
 /* PART 2: SQLite
