@@ -150,8 +150,8 @@ SELECT bookid,
        name,
        firstname, surname,
        (CASE
-        WHEN  memid=0 THEN slots*guestcost
-        ELSE slots*membercost END )  AS  total_cost
+        WHEN memid=0 THEN slots*guestcost
+        ELSE slots*membercost END ) AS total_cost
 FROM Bookings
 INNER JOIN Facilities
 	USING(facid)
@@ -194,11 +194,73 @@ QUESTIONS:
 The output of facility name and total revenue, sorted by revenue. Remember
 that there's a different cost for guests and members! */
 
+/* CB: I couldn't reference total_revenue by name in WHERE clause
+until I put a wrapper select around original query */
+
+SELECT *
+FROM
+(SELECT name, SUM(total_cost) AS total_revenue
+FROM
+	(SELECT *,
+			(CASE
+			WHEN memid=0 THEN slots*guestcost
+			ELSE slots*membercost END ) AS total_cost
+	FROM Bookings
+	INNER JOIN Facilities
+		USING(facid))
+GROUP BY name)
+WHERE total_revenue < 1000
+ORDER BY total_revenue;
+
+
 /* Q11: Produce a report of members and who recommended them in alphabetic surname,firstname order */
 
+SELECT firstname||' '||surname AS 'member_name',
+                 rec_firstname||' '||rec_surname AS 'recommended_by_name'
+FROM Members
+LEFT JOIN (SELECT memid,
+                  surname AS rec_surname,
+                  firstname AS rec_firstname
+                  FROM Members) AS Members_2
+ON Members.recommendedby = Members_2.memid
+WHERE surname <> 'GUEST'
+ORDER BY surname;
 
 /* Q12: Find the facilities with their usage by member, but not guests */
 
+/* CB: I first read Q12 as total booked slots per facility excluding guests */
+
+SELECT name, member_usage
+FROM (SELECT facid, SUM(slots) AS member_usage
+      FROM Bookings
+      WHERE memid <> 0
+      GROUP BY facid)
+LEFT JOIN Facilities
+USING(facid)
+ORDER BY name;
+
+/* CB: But maybe want the more detailed booked slots by facility AND member: */
+
+SELECT name, firstname||' '||surname AS 'member_name',usage
+FROM (SELECT facid, memid, SUM(slots) AS usage
+      FROM Bookings
+      WHERE memid <> 0
+      GROUP BY facid, memid)
+LEFT JOIN Facilities
+USING(facid)
+LEFT JOIN Members
+USING(memid)
+ORDER BY name, usage DESC
 
 /* Q13: Find the facilities usage by month, but not guests */
 
+/* CB: I'll define "usage" as sum of slots across all bookings for facility where memid <> 0 */
+
+SELECT name,
+       substr(starttime, 1, 7) AS month,
+       SUM(slots) AS usage
+FROM Bookings
+LEFT JOIN Facilities
+USING(facid)
+WHERE memid <>0
+GROUP BY name, month;
